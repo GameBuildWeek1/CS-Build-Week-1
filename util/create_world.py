@@ -2,7 +2,10 @@ from django.contrib.auth.models import User
 from adventure.models import Player, Room
 
 
-Room.objects.all().delete()
+try:
+	Room.objects.all().delete()
+except:
+	pass;
 
 r_outside = Room(title="Outside Cave Entrance",
                description="North of you, the cave mount beckons")
