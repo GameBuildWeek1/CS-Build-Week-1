@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
-# from pusher import Pusher
+from pusher import Pusher
 from django.http import JsonResponse
 from decouple import config
 from django.contrib.auth.models import User
@@ -64,4 +64,15 @@ def move(request):
 @api_view(["POST"])
 def say(request):
     # IMPLEMENT
-    return JsonResponse({'error':"Not yet implemented"}, safe=True, status=500)
+    #return JsonResponse({'error':"Not yet implemented"}, safe=True, status=500)
+    pusher = Pusher("868770", "7163921e28b59b2fa192", "d50082b134bd6f1f1cd5", "us3")
+
+    # collect the message from the post parameters, and save to the database
+    message = Message(message=request.POST.get('message', ''), status='', user=request.user)
+    message.save()
+    # create an dictionary from the message instance so we can send only required details to pusher
+    message = {'name': message.user.username, 'message': message.message, 'id': message.id}
+    # trigger the message, channel and event to pusher
+    pusher.trigger(u'a_channel', u'an_event', message)
+    # return a json response of the broadcasted message
+    return JsonResponse(message, safe=False)
