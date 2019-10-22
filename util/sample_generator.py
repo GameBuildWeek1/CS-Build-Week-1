@@ -137,6 +137,7 @@ class World:
         self.width = 0
         self.height = 0
         self.rooms = []
+        self.home = None;
     def generate_rooms(self, size_x, size_y, num_rooms):
         '''
         Fill up the grid, bottom to top, in a zig-zag pattern
@@ -150,6 +151,7 @@ class World:
         self.grid[size_y//2][size_x//2] = self.rooms[0];
         for i in branches:
             i.room = self.rooms[0];
+        self.home = self.rooms[0];
         while(len(branches) > 0):
             remove = []
             new_b = []
@@ -168,8 +170,8 @@ class World:
                         remove.append(b);
                         continue;
                     self.rooms.append(m);
-            self.print_rooms();
-            time.sleep(2);
+            #self.print_rooms();
+            #time.sleep(2);
             branches = [branches[b] for b in range(len(branches)) if not b in remove ]
             if(len(new_b) > 0):
                 branches += new_b;
@@ -228,11 +230,11 @@ class World:
         # Print string
         print(str)
 
-w = World()
+""" w = World()
 num_rooms = 1000
 width = 42
 height = 16
-w.generate_rooms(width, height, num_rooms)
-w.print_rooms()
-time.sleep(2);
-print(f"\n\nWorld\n  height: {height}\n  width: {width},\n  num_rooms: {len(w.rooms)}\n")
+w.generate_rooms(width, height, num_rooms) """
+##w.print_rooms()
+##time.sleep(2);
+##print(f"\n\nWorld\n  height: {height}\n  width: {width},\n  num_rooms: {len(w.rooms)}\n")
