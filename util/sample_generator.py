@@ -41,8 +41,8 @@ class vector2:
         self = self.__truediv__(other);
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y;
-    def __string__(self):
-        return "x: " + string(self.x) + " y: " + string(self.y);
+    def __str__(self):
+        return "x: " + str(self.x) + " y: " + str(self.y);
 
 class Room:
     def __init__(self,id, name, description, x, y):
@@ -112,7 +112,7 @@ class branch:
             r_start.y = -random.randint(0,r_size.y-1) if r_dir.y == -2  else r_dir.y*r_size.y +  (1 if self.dir == 1 else 0);
             r_start = self.location + r_start; #upper left location offset + location + one more move tile (for padding)
             if(r_start.x < 0 or r_start.y < 0):
-                return False; #to close to the edge of the map
+                return self.draw_back(world); #to close to the edge of the map
             flag = False;
             try:
                 for y in range(-1,r_size.y+1): #check area first add padding so we dont have a path that cuts tangent to a room
@@ -124,7 +124,7 @@ class branch:
                     if(flag == True):
                         break;
             except IndexError:
-                return False; #too close to the end of the map to do anything;
+                return self.draw_back(world); #too close to the end of the map to do anything;
             if (flag == False):
                 for y in range(r_size.y): #then apply;
                     for x in range(r_size.x):
@@ -133,7 +133,7 @@ class branch:
                 world[self.location.y][self.location.x] = 1;
                 self.location = directionValues[direction[self.dir]] + self.location;
                 world[self.location.y][self.location.x] = 1;
-                self.location = self.location + r_size*directionValues[direction[self.dir]];
+                self.location = self.location + (r_size-1)*directionValues[direction[self.dir]];
                 
                 #offset the entrence and exit
                 if(self.dir > 1):
@@ -178,26 +178,50 @@ class branch:
         if(self.dir == 2 or self.dir == 3):
             return random.randint(0,1);
         return self.dir;
+    def draw_back(self,world): #draw back if i hit the end of the world so we dont get weird dead ends
+        dir = directionValues[direction[self.dir]] * -1; #inverse my direction
+        self.location.x = min(max(self.location.x, 0), len(world[0]));
+        self.location.y = min(max(self.location.y, 0), len(world));
+        for i in range(max(len(world),len(world[0]))+1):
+            count = 0;
+            i_loc = None;
+            for i in range(4):
+                loc = self.location + directionValues[direction[i]];
+                try:
+                    if(world[loc.y][loc.x] == 1 and loc.x > -1 and loc.y > -1):
+                        count+=1;
+                        i_loc = loc;
+                except:
+                    pass;
+            if(count > 1):
+                break;
+            try:
+                world[self.location.y][self.location.x] = 0;
+            except:
+                pass;
+            if(i_loc is None):
+                print("error");
+                break;
+            self.location = i_loc;
+        return False;
 
     def move(self, world, branches): #main looop 
         #decay branch if decay is low then have a chance of removing branch
         self.decay -= 1;
         self.location = self.location + directionValues[direction[self.dir]]
         if(self.decay < 10):
-            if random.randint(0, self.decay) == 0 and False:
+            if random.randint(0, self.decay) == 0:
                 self.create_room(world,branches,False,True);
-                return False;
+                return self.draw_back(world);
         change = False;
         if(self.dir_chance > random.random()):
             self.dir = self.change_direction();
             change = True;
         
         if self.location.y < 0 or self.location.x < 0: #if x becomes negitive it looks at the back of the list which we dont want;
-            self.room = 9;
-            return False;
+            return self.draw_back(world); #always returns false
         try:
             if world[self.location.y][self.location.x] == 1:
-                self.room = 8;
                 return False;
             if(self.dir > 1 and change == False):
                 for y in range(-1, 2, 2): #check to see if we are tangent to a room n s
@@ -210,7 +234,7 @@ class branch:
                         world[self.location.y][self.location.x] = 1;
                         return False;
         except:
-            return False;
+            return self.draw_back(world); #always returns false
         self.room_step += 1;
         if(self.room_step > 0):
             return self.create_room(world,branches);
@@ -234,7 +258,7 @@ class World:
                 self.grid[r_start.y+y][r_start.x+x] = 1;
         self.grid[self.home.y][self.home.x] = "0";
         return [branch(i,sx+2*directionValues[direction[i]].x,sy+2*directionValues[direction[i]].y, 1000, random.random()*0, random.random()*0.1) for i in range(4)]
-    def generate_rooms(self, size_x, size_y, num_rooms, startx=-1, starty=-1, seed=random.randint(-99999,99999)):
+    def generate_rooms(self, size_x, size_y, num_rooms, startx=-1, starty=-1, seed=None):
         #check if not set or to close to the edge
         if(startx < 5):
             startx = size_x //2;
@@ -244,7 +268,9 @@ class World:
         Fill up the grid, bottom to top, in a zig-zag pattern
         '''
         #reset everything
-        random.seed(seed); #assign seed so we can have more control
+
+        if(not seed is None):
+            random.seed(seed); #assign seed so we can have more control
         self.__init__();
 
         self.width = size_x;
@@ -277,9 +303,10 @@ class World:
                 branches += new_b;
             
             #optional step by step print out
-            self.print_rooms();
-            time.sleep(2);
+            """self.print_rooms();
+            time.sleep(1/12); """
         flag = False;
+        #create an exit
         for i in range(1000):
             x = random.randint(0,size_x);
             y = random.randint(0,size_y);
@@ -296,12 +323,14 @@ class World:
                     raise;
             except:
                 continue;
-            if ((size_x//2.5)**2 + (size_y//2.5)**2) < (x - self.home.x)**2 + (y - self.home.y)**2:
+            if ((size_x//3)**2 + (size_y//3)**2) < (x - self.home.x)**2 + (y - self.home.y)**2:
                 self.grid[y][x] = "E";
                 flag = True;
                 break;
         if(flag == False):
-            return self.generate_rooms(size_x,size_y,num_rooms);
+            print("again");
+            #return;
+            return self.generate_rooms(size_x,size_y,num_rooms,random.randint(size_x//4, (3*size_x)//4),random.randint(size_y//4, (3*size_y)//4));
         
     def print_rooms(self):
         '''
@@ -363,15 +392,18 @@ class World:
             string += "#\n" """
 
         # Add bottom border
-        string += "# " * ((self.width) + 2) + "\n";
+        string += "⬛" * ((self.width) + 2) + "\n";
         # Print stringing
-        print(string)
-
-w = World()
-num_rooms = 1000
-width = 200
-height = 50
-w.generate_rooms(width, height, num_rooms,5,5);
-w.print_rooms();
-##time.sleep(2);
-##print(f"\n\nWorld\n  height: {height}\n  width: {width},\n  num_rooms: {len(w.rooms)}\n")
+if(__name__ == "__main__"):
+    world = [];
+    for i in range(4):
+        w = World()
+        num_rooms = 1000
+        width = int(2**(5+(i*0.5)));
+        height = int(2**(4+(i*0.5)));
+        w.generate_rooms(width, height, num_rooms, random.randint(width//4, (3*width)//4),random.randint(height//4, (3*height)//4));
+        w.print_rooms();
+        world.append(w.grid);
+        #time.sleep(2);
+        ##print(f"\n\nWorld\n  height: {height}\n  width: {width},\n  num_rooms: {len(w.rooms)}\n")
+    #print(world);
