@@ -105,7 +105,7 @@ class branch:
                 world[self.location.y][self.location.x] = 1;
                 return True;
             self.room_step = -2;
-            r_size = vector2(random.randint(5,5),random.randint(5,5)) #get a random room size
+            r_size = vector2(random.randint(3,6),random.randint(3,6)) #get a random room size
             r_dir = directionOffset[self.dir];
             r_start = vector2(0,0);
             r_start.x = -random.randint(0,r_size.x-1) if r_dir.x == -2  else r_dir.x*r_size.x + (1 if self.dir == 2 else 0);
@@ -328,11 +328,9 @@ class World:
                 flag = True;
                 break;
         if(flag == False):
-            print("again");
-            #return;
             return self.generate_rooms(size_x,size_y,num_rooms,random.randint(size_x//4, (3*size_x)//4),random.randint(size_y//4, (3*size_y)//4));
         
-    def print_rooms(self):
+    def print_rooms(self, pos=[]):
         '''
         Print the rooms in room_grid in ascii characters.
         '''
@@ -345,15 +343,23 @@ class World:
         # We reverse it so it draws in the right direction.
         reverse_grid = list(self.grid) # make a copy of the list
         #reverse_grid = [[random.randint(0,1) for i in range(self.width)]for i in range(self.height)]
-        for row in reverse_grid:
+        for row in range(len(reverse_grid)):
             string += "#";
-            for tile in row:
-                if(tile == 1):
+            for tile in range(len(reverse_grid[row])):
+                flag = False;
+                for p in pos:
+                    if(isinstance(p,vector2) and p.x == tile and p.y == row):
+                        string += "P"
+                        flag = True
+                        break;
+                if(flag == True):
+                    continue;
+                elif(reverse_grid[row][tile] == 1):
                     string += " "
-                elif(tile == 0):
+                elif(reverse_grid[row][tile] == 0):
                     string += "X"
                 else:
-                    string += str(tile);
+                    string += str(reverse_grid[row][tile]);
 
             string += "#\n"
         #reverse_grid.reverse()
@@ -394,15 +400,17 @@ class World:
         # Add bottom border
         string += "⬛" * ((self.width) + 2) + "\n";
         # Print stringing
+        print(string);
+        
 if(__name__ == "__main__"):
     world = [];
     for i in range(4):
         w = World()
         num_rooms = 1000
-        width = int(2**(5+(i*0.5)));
-        height = int(2**(4+(i*0.5)));
+        width = int(2**(5.5+(i*0.5)));
+        height = int(2**(4.5+(i*0.5)));
         w.generate_rooms(width, height, num_rooms, random.randint(width//4, (3*width)//4),random.randint(height//4, (3*height)//4));
-        w.print_rooms();
+        w.print_rooms([vector2(0,0), vector2(1,0)]);
         world.append(w.grid);
         #time.sleep(2);
         ##print(f"\n\nWorld\n  height: {height}\n  width: {width},\n  num_rooms: {len(w.rooms)}\n")
