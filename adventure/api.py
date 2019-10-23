@@ -7,10 +7,19 @@ from django.contrib.auth.models import User
 from .models import *
 from rest_framework.decorators import api_view
 import json
-
+from util.sample_generator import World;
+import random;
 # instantiate pusher
 # pusher = Pusher(app_id=config('PUSHER_APP_ID'), key=config('PUSHER_KEY'), secret=config('PUSHER_SECRET'), cluster=config('PUSHER_CLUSTER'))
-
+world = []
+for i in range(4):
+        w = World()
+        num_rooms = 1000
+        width = int(2**(5+(i*0.5)));
+        height = int(2**(4+(i*0.5)));
+        w.generate_rooms(width, height, num_rooms, random.randint(width//4, (3*width)//4),random.randint(height//4, (3*height)//4));
+        w.print_rooms();
+        world.append(w.grid);
 @csrf_exempt
 @api_view(["GET"])
 def initialize(request):
