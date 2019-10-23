@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from pusher import Pusher
 from django.http import JsonResponse
+from django.http import HttpResponseForbidden
 from decouple import config
 from django.contrib.auth.models import User
 from .models import *
@@ -73,8 +74,25 @@ def move(request):
         players = room.playerNames(player_id)
         return JsonResponse({'name': player.user.username, 'title': room.title, 'description': room.description, 'players': players, 'error_msg': "You cannot move that way."}, safe=True)
 
+# pusher auth route
+@csrf_exempt
+@api_view(["POST"])
+def pusher_auth(request):
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden()
 
-# @csrf_exempt
+    pusher_client = Pusher("868770", "7163921e28b59b2fa192",
+                           "d50082b134bd6f1f1cd5", "us3")
+
+    # We must generate the token with pusher's service
+    payload = pusher_client.authenticate(
+        channel=request.POST['channel_name'],
+        socket_id=request.POST['socket_id'])
+
+    return JsonResponse(payload)
+
+
+@csrf_exempt
 @api_view(["POST"])
 def say(request):
     # IMPLEMENT
@@ -91,5 +109,11 @@ def say(request):
                'message': message.message, 'id': message.id}
     # trigger the message, channel and event to pusher
     pusher.trigger(u'a_channel', u'an_event', message)
+    '''
+    # authenticate the user with pusher?
+    payload = pusher.authenticate(
+        channel=request.POST['channel_name'],
+        socket_id=request.POST['socket_id'])
+    '''
     # return a json response of the broadcasted message
     return JsonResponse(message, safe=False)
