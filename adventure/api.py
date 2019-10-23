@@ -7,10 +7,24 @@ from django.contrib.auth.models import User
 from .models import *
 from rest_framework.decorators import api_view
 import json
-
+from util.sample_generator import World;
+import random;
 # instantiate pusher
+<<<<<<< HEAD
 pusher = Pusher(app_id=config('PUSHER_APP_ID'), key=config('PUSHER_KEY'), secret=config('PUSHER_SECRET'), cluster=config('PUSHER_CLUSTER'))
 
+=======
+# pusher = Pusher(app_id=config('PUSHER_APP_ID'), key=config('PUSHER_KEY'), secret=config('PUSHER_SECRET'), cluster=config('PUSHER_CLUSTER'))
+world = []
+for i in range(4):
+        w = World()
+        num_rooms = 1000
+        width = int(2**(5+(i*0.5)));
+        height = int(2**(4+(i*0.5)));
+        w.generate_rooms(width, height, num_rooms, random.randint(width//4, (3*width)//4),random.randint(height//4, (3*height)//4));
+        w.print_rooms();
+        world.append(w.grid);
+>>>>>>> 1a208057ccf700527116dd69f4cede4840f8dc7d
 @csrf_exempt
 @api_view(["GET"])
 def initialize(request):
@@ -64,4 +78,15 @@ def move(request):
 @api_view(["POST"])
 def say(request):
     # IMPLEMENT
-    return JsonResponse({'error':"Not yet implemented"}, safe=True, status=500)
+    #return JsonResponse({'error':"Not yet implemented"}, safe=True, status=500)
+    pusher = Pusher("868770", "7163921e28b59b2fa192", "d50082b134bd6f1f1cd5", "us3")
+
+    # collect the message from the post parameters, and save to the database
+    message = Message(message=request.POST.get('message', ''), status='', user=request.user)
+    message.save()
+    # create an dictionary from the message instance so we can send only required details to pusher
+    message = {'name': message.user.username, 'message': message.message, 'id': message.id}
+    # trigger the message, channel and event to pusher
+    pusher.trigger(u'a_channel', u'an_event', message)
+    # return a json response of the broadcasted message
+    return JsonResponse(message, safe=False)
