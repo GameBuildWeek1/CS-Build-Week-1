@@ -46,9 +46,7 @@ class Player(models.Model):
     w = models.IntegerField(default=1);
     last_update = models.IntegerField(default=0)
     def initialize(self):
-        if self.currentRoom == 0:
-            self.currentRoom = Room.objects.first().id
-            self.save()
+        pass;
     def room(self):
         try:
             return Room.objects.get(id=self.currentRoom)

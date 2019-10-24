@@ -29,18 +29,21 @@ def build_world():
             w.generate_rooms(width, height, num_rooms, random.randint(width//4, (3*width)//4),random.randint(height//4, (3*height)//4));
             #w.print_rooms(); 
             world.append(w);
-    players =Player.objects.all();
-    for a in players:
-        if(a.last_update > 0):
-            a.x = world[0].home.x+random.randint(-2,2);
-            a.y = world[0].home.y+random.randint(-2,2);
-            a.z = 0;
-        else:
-            a.x = -1;
-            a.y = -1;
-            a.z = -1;
-        a.save();
-    winner = None;
+    try:
+        players = Player.objects.all();
+        for a in players:
+            if(a.last_update > 0):
+                a.x = world[0].home.x+random.randint(-2,2);
+                a.y = world[0].home.y+random.randint(-2,2);
+                a.z = 0;
+            else:
+                a.x = -1;
+                a.y = -1;
+                a.z = -1;
+            a.save();
+        winner = None;
+    except:
+        pass;
 build_world();
 
 def authorize_user(user):
