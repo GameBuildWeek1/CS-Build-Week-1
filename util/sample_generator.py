@@ -6,6 +6,7 @@
 # to see the world.
 import random
 import time
+from adventure.models import Player, Room
 
 class vector2:
     def __init__(self, x=0, y=0):
@@ -412,7 +413,8 @@ if(__name__ == "__main__"):
         w.generate_rooms(width, height, num_rooms, random.randint(width//4, (3*width)//4),random.randint(height//4, (3*height)//4));
         w.print_rooms([vector2(0,0), vector2(1,0)]);
         world.append(w.grid);
-        print(w.grid);
+    
+        #print(w.grid);
         #time.sleep(2);
         ##print(f"\n\nWorld\n  height: {height}\n  width: {width},\n  num_rooms: {len(w.rooms)}\n")
     #print(world);

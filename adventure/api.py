@@ -13,36 +13,30 @@ import random;
 from threading import Timer
 # instantiate pusher
 # pusher = Pusher(app_id=config('PUSHER_APP_ID'), key=config('PUSHER_KEY'), secret=config('PUSHER_SECRET'), cluster=config('PUSHER_CLUSTER'))
-world = []
-global winner;
 
-winner = None;
 def build_world():
-    global winner;
-    for i in range(len(world)):
-        world.pop();
-    for i in range(1):
+    Room.objects.all().delete();
+    world =[]
+    for i in range(4):
             w = World()
             num_rooms = 1000
-            width = int(2**(5+(i*0.5)));
+            width = int(2**(6+(i*0.5)));
             height = int(2**(4+(i*0.5)));
-            w.generate_rooms(width, height, num_rooms, random.randint(width//4, (3*width)//4),random.randint(height//4, (3*height)//4), 999);
+            w.generate_rooms(width, height, num_rooms, random.randint(width//4, (3*width)//4),random.randint(height//4, (3*height)//4));
             #w.print_rooms(); 
             world.append(w);
     players =Player.objects.all();
+    for w in world:
+        l = Room(homex=w.home.x, homey=w.home.y, grid="\n".join(["\t".join(o) for o in [[str(a) for a in o ] for o in w.grid]]))
+        l.save();
+    
     for a in players:
-        if(a.last_update > 0):
-            a.x = world[0].home.x+random.randint(-2,2);
-            a.y = world[0].home.y+random.randint(-2,2);
-            a.z = 0;
-        else:
-            a.x = -1;
-            a.y = -1;
-            a.z = -1;
+        a.x = -1;
+        a.y = -1;
+        a.z = -1;
+        a.w = 0;
         a.save();
-    winner = None;
-build_world();
-
+#build_world();
 def authorize_user(user):
     try:
         return user.player 
@@ -56,12 +50,19 @@ def setwinner(player):
 def initialize(request):
     user = request.user
     player = authorize_user(user);
+    world = Room.objects.all();
+    if(len(world) < 1):
+        build_world();
+        world = Room.objects.all();
+    level = world[max(min(0,player.z), len(world)-1)]
+    level.grid = [[ j for j in i.split('\t')] for i in level.grid.splitlines()] #convert to an array
     if(player==None):
         return  JsonResponse({'error': 'unauthorized access', 'message': 'please login before accessing this page'},safe=True);
     if(player.x < 0 or player.y < 0 or player.z < 0):
-        player.x = world[0].home.x + random.randint(-2,2);
-        player.y = world[0].home.y + random.randint(-2,2);
+        player.x = level.homex + random.randint(-2,2);
+        player.y = level.homey + random.randint(-2,2);
         player.z = 0;
+        player.w = 0;
         player.save();
     return JsonResponse({ \
         'uuid': player.uuid,\
@@ -70,9 +71,9 @@ def initialize(request):
             'lvl': 1, \
             'size': {
                 'width': len(world[player.z].grid[0]), \
-                'height': len(world[player.z].grid)\
+                'height': len(level.grid)\
             }, \
-            'data': world[player.z].grid \
+            'data': level.grid \
         } \
     }, safe=True);
     #player_id = player.id
@@ -82,11 +83,17 @@ def initialize(request):
     #return JsonResponse({'uuid': uuid, 'name':player.user.username, 'title':room.title, 'description':room.description, 'players':players, 'map': [i.grid for i in world]}, safe=True)
 
 def createWelcomePacket(player, spawn): #welcome packet sends the player the map and all the player info again so they know every thing they need to know
+
+
+    world = Room.objects.all();
+    level = world[max(min(0,player.z), len(world)-1)]
+    level.grid = [[ j for j in i.split('\t')] for i in level.grid.splitlines()] #convert to an array
     #spawn player 
     if(spawn == True):
-        player.x = world[0].home.x + random.randint(-2,2);
-        player.y = world[0].home.y + random.randint(-2,2);
+        player.x = level.homex + random.randint(-2,2);
+        player.y = level.homey + random.randint(-2,2);
         player.z = 0;
+        player.w = 0;
         player.save();
     players = []
     for p in Player.objects.all():
@@ -98,19 +105,18 @@ def createWelcomePacket(player, spawn): #welcome packet sends the player the map
         'curpos': {'x': player.x, 'y': player.y, 'z': player.z }, \
         'players': players, \
         'map': { \
-            'lvl': 1, \
+            'lvl': 15, \
             'size': { \
-                'width': len(world[player.z].grid[0]), \
-                'height': len(world[player.z].grid)\
+                'width': len(level.grid[0]), \
+                'height': len(level.grid)\
             }, \
-            'data': world[player.z].grid \
+            'data': level.grid \
         } \
     }
 
 # @csrf_exempt
 @api_view(["POST"])
 def move(request):
-    global winner;
     dirs={"n": vector2(0,-1), "s": vector2(0,1), "e": vector2(1,0), "w": vector2(-1,0)}
     reverse_dirs = {"n": "south", "s": "north", "e": "west", "w": "east"}
     message= "";
@@ -121,6 +127,12 @@ def move(request):
     player_uuid = player.uuid
     data = json.loads(request.body)
     direction = data['direction']
+    world = Room.objects.all();
+    if(len(world) < 1):
+        build_world();
+        world = Room.objects.all();
+    level = world[max(min(0,player.z), len(world)-1)]
+    level.grid = [[ j for j in i.split('\t')] for i in level.grid.splitlines()] #convert to an array
     try:
         pos = vector2(player.x, player.y) + dirs[direction];
         force = False;
@@ -133,44 +145,54 @@ def move(request):
     if(pos.x < 0 or pos.y < 0 or player.z < 0 or force):
         return JsonResponse(createWelcomePacket(player, True), safe=True);
     try:
-        if(world[player.z].grid[pos.y][pos.x] == 0 or pos.x < 0 or pos.y < 0):
+        if(level.grid[pos.y][pos.x] == "0" or pos.x < 0 or pos.y < 0):
             raise;
         player.x = pos.x;
         player.y = pos.y;
-        if(world[player.z].grid[pos.y][pos.x] == 'E'): #move the player to the next level and spawn them
+        if(level.grid[pos.y][pos.x] == 'E'): #move the player to the next level and spawn them
+            print(len(world), player.z+1);
             if(player.z+1 >= len(world)):
                 #they have won the game so lets do a dance
                 message = "YOU HAVE WON YAYAYAYAYAYAYAY! EVERY ONE DANCE NOW!"
                 #random.seed(player.x+player.y+player.id+datetime.datetime.utcfromtimestamp(0));
+                winner = None;
+                for p in Player.objects.all():
+                    if p.w == 1:
+                        winner = p;
                 if(winner is None):
-                    winner = player;
+                    player.w = 1;
                     T = Timer(5.0, build_world);
                     T.start();
                 #set up something here to tell everyone the game is over and this player has won
             else:
                 player.z += 1;
-                player.x = world[player.z].home.x
-                player.y = world[player.z].home.y
+                player.x = level.homex
+                player.y = level.homey
                 player.save();
                 res = createWelcomePacket(player,False);
                 res["message"] = "You have escaped this level, You are one step closer to getting out of this hell hole."
-                print(player.z);
                 return JsonResponse(res,safe=True)
         player.save();
     except:
         #message = "You can not move there!"
         pass;
-    pp = []
+
+    #broken
+    """  pp = []
     for p in Player.objects.all():
         if(p.z == player.z):
             pp.append(vector2(p.x,p.y))
-    world[player.z].print_rooms(pp);
+    world[player.z].print_rooms(pp); """
     players = []
+    winner = None;
     for p in Player.objects.all():
         if(p.z > -1 and p.z == player.z and not p.uuid == player.uuid):
             players.append({'uuid': p.uuid, 'name': p.user.username, 'x': p.x, 'y': p.y, 'z':p.z})
+            if(p.w == 1):
+                winner = p;
+            
     if(not winner == None and not winner.uuid == player.uuid):
-        message = player.user.username + " HAS WON YAYAYAYAYAYAYAY! EVERY ONE DANCE NOW!"
+        message = winner.user.username + " HAS WON YAYAYAYAYAYAYAY! EVERY ONE DANCE NOW!"
     return JsonResponse({\
         'uuid': player.uuid,\
         'curpos': {'x': player.x, 'y': player.y, 'z': player.z },\
