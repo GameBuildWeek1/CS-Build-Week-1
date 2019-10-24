@@ -160,11 +160,11 @@ def move(request):
     except:
         #message = "You can not move there!"
         pass;
-    """  pp = []
+    pp = []
     for p in Player.objects.all():
         if(p.z == player.z):
             pp.append(vector2(p.x,p.y))
-    world[player.z].print_rooms(pp); """
+    world[player.z].print_rooms(pp);
     players = []
     for p in Player.objects.all():
         if(p.z > -1 and p.z == player.z and not p.uuid == player.uuid):
