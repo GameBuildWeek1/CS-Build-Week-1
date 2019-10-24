@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from pusher import Pusher
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseForbidden
 from decouple import config
 from django.contrib.auth.models import User
 from .models import *
@@ -76,3 +76,18 @@ def say(request):
     pusher.trigger(u'a_channel', u'an_event', message)
     # return a json response of the broadcasted message
     return JsonResponse(message, safe=False)
+
+
+def pusher_auth(request):
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden()
+
+
+    pusher_client = Pusher("868770", "7163921e28b59b2fa192", "d50082b134bd6f1f1cd5", "us3")
+
+    # We must generate the token with pusher's service
+    payload = pusher_client.authenticate(
+        channel=request.POST['channel_name'],
+        socket_id=request.POST['socket_id'])
+
+    return JsonResponse(payload)
