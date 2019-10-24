@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os
 import sys
+import project;
 
 if __name__ == '__main__':
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'adv_project.settings')
