@@ -26,7 +26,7 @@ def build_world():
             num_rooms = 1000
             width = int(2**(5+(i*0.5)));
             height = int(2**(4+(i*0.5)));
-            w.generate_rooms(width, height, num_rooms, random.randint(width//4, (3*width)//4),random.randint(height//4, (3*height)//4));
+            w.generate_rooms(width, height, num_rooms, random.randint(width//4, (3*width)//4),random.randint(height//4, (3*height)//4), 999);
             #w.print_rooms(); 
             world.append(w);
     players =Player.objects.all();
