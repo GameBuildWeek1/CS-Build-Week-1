@@ -15,8 +15,11 @@ gunicorn = "*"
 django-heroku = "*"
 django-rest-api = "*"
 dj-database-url = "*"
+psycopg2-binary = "*"
 
 [dev-packages]
+pylint = "*"
+autopep8 = "*"
 
 [requires]
 python_version = "3.7"
