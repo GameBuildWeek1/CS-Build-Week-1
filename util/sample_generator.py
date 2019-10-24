@@ -256,7 +256,7 @@ class World:
         for y in range(r_size.y):
             for x in range(r_size.x):
                 self.grid[r_start.y+y][r_start.x+x] = 1;
-        self.grid[self.home.y][self.home.x] = "0";
+        self.grid[self.home.y][self.home.x] = "S";
         return [branch(i,sx+2*directionValues[direction[i]].x,sy+2*directionValues[direction[i]].y, 1000, random.random()*0, random.random()*0.1) for i in range(4)]
     def generate_rooms(self, size_x, size_y, num_rooms, startx=-1, starty=-1, seed=None):
         #check if not set or to close to the edge
@@ -412,6 +412,7 @@ if(__name__ == "__main__"):
         w.generate_rooms(width, height, num_rooms, random.randint(width//4, (3*width)//4),random.randint(height//4, (3*height)//4));
         w.print_rooms([vector2(0,0), vector2(1,0)]);
         world.append(w.grid);
+        print(w.grid);
         #time.sleep(2);
         ##print(f"\n\nWorld\n  height: {height}\n  width: {width},\n  num_rooms: {len(w.rooms)}\n")
     #print(world);
