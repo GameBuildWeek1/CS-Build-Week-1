@@ -41,7 +41,7 @@ def build_world():
             a.z = -1;
         a.save();
     winner = None;
-#build_world();
+build_world();
 
 def authorize_user(user):
     try:
