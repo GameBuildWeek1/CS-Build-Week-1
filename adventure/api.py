@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 from .models import *
 from rest_framework.decorators import api_view
 import json
+import time
 from util.sample_generator import World,vector2;
 import random;
 from threading import Timer
@@ -16,35 +17,34 @@ from threading import Timer
 
 def build_world():
     Room.objects.all().delete();
-    world =[]
+    world = [];
+    sizes = []
     for i in range(4):
             w = World()
             num_rooms = 1000
-            width = int(2**(5+(i*0.5)));
-            height = int(2**(4.2+(i*0.5)));
+            width = int(2**(5.5+(i*0.5)));
+            height = int(2**(4.5+(i*0.5)));
             w.generate_rooms(width, height, num_rooms, random.randint(width//4, (3*width)//4),random.randint(height//4, (3*height)//4));
-            #w.print_rooms(); 
+            w.print_rooms(); 
             world.append(w);
     players =Player.objects.all();
+    world.reverse();
     for w in world:
         l = Room(homex=w.home.x, homey=w.home.y, grid="\n".join(["\t".join(o) for o in [[str(a) for a in o ] for o in w.grid]]))
         l.save();
-    
     for a in players:
         a.x = -1;
         a.y = -1;
         a.z = -1;
         a.w = 0;
         a.save();
-#build_world();
+build_world();
 def authorize_user(user):
     try:
         return user.player 
     except: #player is not logged in
         return None;
-def setwinner(player):
-    winner = player;
-
+    
 @csrf_exempt
 @api_view(["GET"])
 def initialize(request):
@@ -63,6 +63,7 @@ def initialize(request):
         player.y = level.homey + random.randint(-2,2);
         player.z = 0;
         player.w = 0;
+        #player.last_update = time.time()-60*1 if player.last_update+60*1 < int(time.time()) else player.last_update;
         player.save();
     return JsonResponse({ \
         'uuid': player.uuid,\
@@ -113,7 +114,13 @@ def createWelcomePacket(player, spawn): #welcome packet sends the player the map
             'data': level.grid \
         } \
     }
-
+def getmessages(player):
+    messages = []
+    for m in Message.objects.filter( create_at__gte = player.last_update ):
+        messages.append({"message": m.message, "name": m.user.username, "time": m.create_at})
+    player.last_update = time.time();
+    player.save();
+    return messages;
 # @csrf_exempt
 @api_view(["POST"])
 def move(request):
@@ -197,7 +204,8 @@ def move(request):
         'uuid': player.uuid,\
         'curpos': {'x': player.x, 'y': player.y, 'z': player.z },\
         'players': players,\
-        'message': message \
+        'message': message, \
+        'chatmessages': getmessages(player) if player.last_update+1 <= time.time() else []\
     },safe=True);
 
 """ room = player.room()
@@ -250,13 +258,22 @@ def pusher_auth(request):
 @api_view(["POST"])
 def say(request):
     # IMPLEMENT
-    # return JsonResponse({'error':"Not yet implemented"}, safe=True, status=500)
+    try:
+        m = json.loads(request.body)["message"]
+    except:
+        return JsonResponse({"message": "must have message to send"},safe=True);
+    message = Message(user= request.user, message=m, create_at=time.time());
+    message.save();
+    return JsonResponse("",safe=False)
+
+    """ # return JsonResponse({'error':"Not yet implemented"}, safe=True, status=500)
     pusher = Pusher("868770", "7163921e28b59b2fa192",
                     "d50082b134bd6f1f1cd5", "us3")
 
-    # collect the message from the post parameters, and save to the database
+    # collect the message from the post parameters, and save to the database """
     message = Message(message=request.POST.get(
         'message', ''), status='', user=request.user)
+    message.create_at = time.time();
     message.save()
     # create an dictionary from the message instance so we can send only required details to pusher
     message = {'name': message.user.username,
