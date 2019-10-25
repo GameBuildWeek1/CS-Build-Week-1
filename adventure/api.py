@@ -36,7 +36,7 @@ def build_world():
         a.z = -1;
         a.w = 0;
         a.save();
-build_world();
+#build_world();
 def authorize_user(user):
     try:
         return user.player 
