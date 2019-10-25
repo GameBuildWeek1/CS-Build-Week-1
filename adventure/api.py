@@ -26,12 +26,10 @@ def build_world():
             height = int(2**(4.5+(i*0.5)));
             w.generate_rooms(width, height, num_rooms, random.randint(width//4, (3*width)//4),random.randint(height//4, (3*height)//4));
             w.print_rooms(); 
-            world.append(w);
+            l = Room(homex=w.home.x, homey=w.home.y, grid="\n".join(["\t".join(o) for o in [[str(a) for a in o ] for o in w.grid]]), level=i)
+            l.save();
     players =Player.objects.all();
-    world.reverse();
-    for w in world:
-        l = Room(homex=w.home.x, homey=w.home.y, grid="\n".join(["\t".join(o) for o in [[str(a) for a in o ] for o in w.grid]]))
-        l.save();
+        
     for a in players:
         a.x = -1;
         a.y = -1;
@@ -50,11 +48,7 @@ def authorize_user(user):
 def initialize(request):
     user = request.user
     player = authorize_user(user);
-    world = Room.objects.all();
-    if(len(world) < 1):
-        build_world();
-        world = Room.objects.all();
-    level = world[max(min(0,player.z), len(world)-1)]
+    level = Room.objects.get(level = max(0,player.z))
     level.grid = [[ j for j in i.split('\t')] for i in level.grid.splitlines()] #convert to an array
     if(player==None):
         return  JsonResponse({'error': 'unauthorized access', 'message': 'please login before accessing this page'},safe=True);
@@ -71,7 +65,7 @@ def initialize(request):
         'map': { \
             'lvl': 1, \
             'size': {
-                'width': len(world[player.z].grid[0]), \
+                'width': len(level.grid[0]), \
                 'height': len(level.grid)\
             }, \
             'data': level.grid \
@@ -86,8 +80,7 @@ def initialize(request):
 def createWelcomePacket(player, spawn): #welcome packet sends the player the map and all the player info again so they know every thing they need to know
 
 
-    world = Room.objects.all();
-    level = world[max(min(0,player.z), len(world)-1)]
+    level = Room.objects.get(level=max(0,player.z));
     level.grid = [[ j for j in i.split('\t')] for i in level.grid.splitlines()] #convert to an array
     #spawn player 
     if(spawn == True):
@@ -116,10 +109,12 @@ def createWelcomePacket(player, spawn): #welcome packet sends the player the map
     }
 def getmessages(player):
     messages = []
-    for m in Message.objects.filter( create_at__gte = player.last_update ):
-        messages.append({"message": m.message, "name": m.user.username, "time": m.create_at})
+    a = player.last_update;
     player.last_update = time.time();
     player.save();
+    for m in Message.objects.filter( create_at__gte = a):
+        messages.append({"message": m.message, "name": m.user.username, "time": m.create_at})
+
     return messages;
 # @csrf_exempt
 @api_view(["POST"])
@@ -134,11 +129,7 @@ def move(request):
     player_uuid = player.uuid
     data = json.loads(request.body)
     direction = data['direction']
-    world = Room.objects.all();
-    if(len(world) < 1):
-        build_world();
-        world = Room.objects.all();
-    level = world[max(min(0,player.z), len(world)-1)]
+    level = Room.objects.get(level=max(0,player.z));
     level.grid = [[ j for j in i.split('\t')] for i in level.grid.splitlines()] #convert to an array
     try:
         pos = vector2(player.x, player.y) + dirs[direction];
@@ -157,8 +148,7 @@ def move(request):
         player.x = pos.x;
         player.y = pos.y;
         if(level.grid[pos.y][pos.x] == 'E'): #move the player to the next level and spawn them
-            print(len(world), player.z+1);
-            if(player.z+1 >= len(world)):
+            if(player.z+1 >= Room.objects.count()):
                 #they have won the game so lets do a dance
                 message = "YOU HAVE WON YAYAYAYAYAYAYAY! EVERY ONE DANCE NOW!"
                 #random.seed(player.x+player.y+player.id+datetime.datetime.utcfromtimestamp(0));
@@ -173,6 +163,7 @@ def move(request):
                 #set up something here to tell everyone the game is over and this player has won
             else:
                 player.z += 1;
+                level = Room.objects.get(level = player.z);
                 player.x = level.homex
                 player.y = level.homey
                 player.save();

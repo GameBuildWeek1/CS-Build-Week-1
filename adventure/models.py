@@ -9,13 +9,14 @@ class Room(models.Model):
     homex = models.IntegerField(default=0)
     homey = models.IntegerField(default=0)
     grid = models.TextField(default="");
+    level = models.IntegerField(unique=True);
 
 class Player(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     uuid = models.UUIDField(default=uuid.uuid4, unique=True)
-    x = models.IntegerField(default=-1)
-    y = models.IntegerField(default=-1)
-    z = models.IntegerField(default=-1)
+    x = models.IntegerField(default=-1);
+    y = models.IntegerField(default=-1);
+    z = models.IntegerField(default=-1);
     w = models.IntegerField(default= 0);
     last_update = models.IntegerField(default=0)
     def initialize(self):
